@@ -1,0 +1,21 @@
+{
+  "name": "100 kN LOX/methane sea-level engine",
+  "propellant": "LOX/CH4",
+  "thrust_kN": 100,
+  "chamber_pressure_bar": 100,
+  "expansion_ratio": 12,
+  "contraction_ratio": 3,
+  "ambient_pressure_bar": 1.01325,
+
+  "liner_material": "GRCop-42",
+  "jacket_material": "Inconel 718",
+  "liner_thickness_mm": 0.7,
+  "channel_count": 100,
+  "channel_height_mm": 2.5,
+  "rib_width_at_throat_mm": 1.0,
+  "channel_roughness_um": 10,
+
+  "coolant_inlet_pressure_bar": 160,
+  "coolant_inlet_temp_K": 120,
+  "safety_factor": 1.5
+}

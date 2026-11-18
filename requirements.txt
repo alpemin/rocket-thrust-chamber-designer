@@ -1,0 +1,4 @@
+numpy>=1.24
+matplotlib>=3.7
+CoolProp>=6.6
+cadquery>=2.4
