@@ -1,6 +1,6 @@
 # Rocket Thrust Chamber Designer
 
-**Preliminary design of a regeneratively cooled liquid-rocket thrust chamber, from requirements to SolidWorks-ready CAD.**
+**Preliminary design of a regeneratively cooled liquid rocket thrust chamber, from requirements to SolidWorks ready CAD.**
 
 You enter thrust, chamber pressure and propellant. The program sizes the nozzle, designs the cooling
 channels, checks that the walls survive the heat and pressure, and builds a 3-D model with all
