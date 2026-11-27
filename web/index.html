@@ -43,6 +43,13 @@ button.alt{background:transparent;color:var(--ink);border:1px solid var(--ink)}
 pre{overflow-x:auto;background:var(--panel);border:1px solid var(--line);padding:12px;font-size:13px;max-height:220px}
 .note{font-size:13px;color:var(--mute)}
 details{background:var(--panel);border:1px solid var(--line);padding:12px 16px;margin-top:12px}summary{cursor:pointer;font-weight:600}
+.fig>#gl{position:absolute;inset:0;cursor:grab;touch-action:none}.fig>#gl:active{cursor:grabbing}#gl canvas{display:block;width:100%;height:100%}
+#draw.m2>#gl,#draw.m2 .lg{display:none}#draw:not(.m2)>svg{display:none}
+.vt{position:absolute;top:10px;left:10px;right:10px;z-index:2;display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px}
+.vt button{min-height:36px;margin:0;padding:0 12px}.vt label{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--mute);cursor:pointer}
+.lg{position:absolute;right:12px;bottom:10px;z-index:1;font-size:12px;color:var(--mute);display:flex;flex-direction:column;align-items:flex-end;gap:4px;pointer-events:none}
+.lg div{display:flex;align-items:center;gap:6px}.lg i{display:block;width:90px;height:8px;border-radius:4px}
+.lg .h{background:linear-gradient(90deg,#2f5bd8,#27b4c7,#f2d33a,#e8401c)}.lg .c{background:linear-gradient(90deg,#3d7be0,#e89a3c)}
 @media(max-width:900px){.main,.two{grid-template-columns:minmax(0,1fr)}.read{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(prefers-reduced-motion:no-preference){#wallq path{transition:fill .25s}}
 </style>
@@ -50,7 +57,7 @@ details{background:var(--panel);border:1px solid var(--line);padding:12px 16px;m
 <body>
 <section class="band"><div class="wrap">
 <h1>Thrust chamber designer</h1>
-<p class="lede">Enter thrust, chamber pressure and propellant. The tool sizes the nozzle with isentropic flow theory, draws a Rao 80% bell contour, estimates gas-side heat flux with the Bartz correlation, checks liner thermal stress and regenerative cooling, and exports the contour for SolidWorks.</p>
+<p class="lede">Enter thrust, chamber pressure and propellant. The tool sizes the nozzle with isentropic flow theory, draws a Rao 80% bell contour, estimates gas-side heat flux with the Bartz correlation, checks liner thermal stress and regenerative cooling, builds a rotatable 3D model with 100 cooling channels, and exports the contour for SolidWorks.</p>
 <div class="main">
 <form class="ctl" id="f">
 <label for="prop">Propellant</label>
@@ -67,7 +74,9 @@ details{background:var(--panel);border:1px solid var(--line);padding:12px 16px;m
 <div><label for="SF">Safety factor</label><input id="SF" type="number" value="1.5" min="1" step="any"></div></div>
 </form>
 <div>
-<div class="fig" id="draw"><svg id="sv" role="img" aria-label="Half-section of the thrust chamber"></svg></div>
+<div class="fig" id="draw"><div id="gl" role="img" aria-label="3D model of the thrust chamber, drag to rotate"></div><svg id="sv" role="img" aria-label="Half-section of the thrust chamber"></svg>
+<div class="vt"><button type="button" id="v3">3D</button><button type="button" class="alt" id="v2">2D section</button><label><input type="checkbox" id="cut" checked> Cutaway</label><label><input type="checkbox" id="jac"> Jacket</label></div>
+<div class="lg"><div>Wall heat flux <span>low</span><i class="h"></i><span>peak</span></div><div>Coolant channels <span>cold</span><i class="c"></i><span>hot</span></div></div></div>
 <div class="read" id="r1"></div>
 <div class="warn" id="warn"></div>
 </div>
@@ -91,6 +100,7 @@ details{background:var(--panel);border:1px solid var(--line);padding:12px 16px;m
 </details>
 </div></section>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 {
 // ENGINE-START
@@ -186,7 +196,7 @@ function render(){
   ['Chamber cylinder length',f2(D.Lcyl*1e3,0)+' mm'],['Total heat load',f2(D.Q/1e6,2)+' MW'],['Fuel flow (coolant)',f2(D.mf,2)+' kg/s'],['Coolant temperature rise',f2(D.dTc,0)+' K'],
   ['Max liner thickness (thermal stress)',f2(D.tLinerMax*1e3,2)+' mm'],['Chosen liner thickness',f2(D.tLiner*1e3,2)+' mm'],['ΔT across liner at throat',f2(D.dTwall,0)+' K'],['Structural jacket thickness',f2(D.tJacket*1e3,1)+' mm']];
  $('tb').innerHTML=rows.map(([a,b])=>`<tr><td>${a}</td><td class="n">${b}</td></tr>`).join('');
- $('out').textContent=sw();drawEngine();drawQ()}
+ $('out').textContent=sw();drawEngine();drawQ();draw3D()}
 const sw=()=>D.pts.map(p=>`${(p[0]*1e3).toFixed(3)}\t${(p[1]*1e3).toFixed(3)}\t0`).join('\n');
 const csv=()=>'x_mm,r_mm,mach,heat_flux_MW_m2\n'+D.prof.map(p=>`${(p.x*1e3).toFixed(3)},${(p.r*1e3).toFixed(3)},${p.M.toFixed(3)},${(p.q/1e6).toFixed(2)}`).join('\n');
 const prompt=()=>{const i=inputs();return`You are a senior propulsion engineer reviewing a preliminary regeneratively cooled thrust chamber design. Point out risks, questionable assumptions and next analysis steps.
@@ -197,6 +207,55 @@ Peak heat flux ${f2(D.qmax/1e6,0)} MW/m², total heat load ${f2(D.Q/1e6,2)} MW, 
 Liner ${D.m.n}, ${f2(D.tLiner*1e3,2)} mm (thermal-stress limit ${f2(D.tLinerMax*1e3,2)} mm), hot wall ${i.Tw} K, jacket ${f2(D.tJacket*1e3,1)} mm, safety factor ${i.SF}.`};
 async function copy(fn,label){try{await navigator.clipboard.writeText(fn());$('msg').textContent=label+' copied.'}catch(e){$('out').textContent=fn();$('msg').textContent='Clipboard blocked: select the text below and copy it.'}}
 $('cSW').onclick=()=>copy(sw,'SolidWorks curve');$('cCSV').onclick=()=>copy(csv,'CSV');$('cAI').onclick=()=>copy(prompt,'Design-review prompt');
+// ---- 3D VIEW (built from the same contour and heat-flux data) ----
+const gl=$('gl');let R3=null,scene,camera,pivot,holder,camD=900,zoom=1,spin=!matchMedia('(prefers-reduced-motion: reduce)').matches,drag=false,lx=0,ly=0,meshes=[];
+const lerpc=(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t];
+const HF=[[.18,.36,.85],[.15,.71,.78],[.95,.83,.23],[.91,.25,.11]];
+function ramp(v){if(!(v>=0))v=0;v=Math.min(1,v)*3;const i=Math.min(2,Math.floor(v));return lerpc(HF[i],HF[i+1],v-i)}
+if(window.THREE){try{
+ R3=new THREE.WebGLRenderer({antialias:true,alpha:true});R3.setPixelRatio(Math.min(devicePixelRatio,2));gl.appendChild(R3.domElement);
+ scene=new THREE.Scene();camera=new THREE.PerspectiveCamera(35,1,1,100000);
+ scene.add(new THREE.HemisphereLight(0xffffff,0x445566,.75));
+ const kl=new THREE.DirectionalLight(0xffffff,.9);kl.position.set(300,500,400);scene.add(kl);
+ const rl=new THREE.DirectionalLight(0xffffff,.35);rl.position.set(-400,-200,-300);scene.add(rl);
+ pivot=new THREE.Group();scene.add(pivot);holder=new THREE.Group();holder.rotation.z=-Math.PI/2;pivot.add(holder);pivot.rotation.set(.4,-.3,0);
+ gl.addEventListener('pointerdown',e=>{drag=true;spin=false;lx=e.clientX;ly=e.clientY;gl.setPointerCapture(e.pointerId)});
+ gl.addEventListener('pointerup',()=>{drag=false});
+ gl.addEventListener('pointermove',e=>{if(!drag)return;pivot.rotation.y+=(e.clientX-lx)*.01;pivot.rotation.x=Math.max(-1.4,Math.min(1.4,pivot.rotation.x+(e.clientY-ly)*.01));lx=e.clientX;ly=e.clientY});
+ gl.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.max(.3,Math.min(3,zoom*(1+e.deltaY*.001)))},{passive:false});
+ let pinch=0;gl.addEventListener('touchmove',e=>{if(e.touches.length===2){const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);if(pinch)zoom=Math.max(.3,Math.min(3,zoom*pinch/d));pinch=d}},{passive:true});
+ gl.addEventListener('touchend',()=>{pinch=0});
+ const rs3=()=>{const w=gl.clientWidth,h=gl.clientHeight;if(!w||!h)return;R3.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()};
+ new ResizeObserver(rs3).observe(gl);
+ const loop=()=>{if(spin&&!drag)pivot.rotation.y+=.004;camera.position.set(0,0,camD*zoom);camera.lookAt(0,0,0);R3.render(scene,camera);requestAnimationFrame(loop)};loop();
+}catch(e){R3=null;gl.textContent='3D view needs WebGL. Use the 2D section.'}}
+function draw3D(){
+ if(!R3||!D)return;
+ meshes.forEach(m=>{holder.remove(m);m.geometry.dispose();m.material.dispose()});meshes=[];
+ const P=D.prof,n=P.length,Rt=D.Rt*1e3,tL=Math.max(D.tLiner*1e3,.4),hc=Math.max(2,.14*Rt),tJ=Math.max(D.tJacket*1e3,1),o1=tL+hc;
+ const cut=$('cut').checked,phi=cut?1.5*Math.PI:2*Math.PI;
+ const x0=P[0].x*1e3,x1=P[n-1].x*1e3,mid=(x0+x1)/2;
+ const add=m=>{m.position.y=-mid;holder.add(m);meshes.push(m)};
+ const lathe=(off,mat,cf)=>{const v=P.map(p=>new THREE.Vector2(p.r*1e3+off,p.x*1e3)),g=new THREE.LatheGeometry(v,160,0,phi);
+  if(cf){const c=g.attributes.position.count,a=new Float32Array(c*3);for(let i=0;i<c;i++){const k=cf(P[i%n]);a[3*i]=k[0];a[3*i+1]=k[1];a[3*i+2]=k[2]}g.setAttribute('color',new THREE.BufferAttribute(a,3))}
+  add(new THREE.Mesh(g,mat))};
+ lathe(0,new THREE.MeshStandardMaterial({vertexColors:true,side:THREE.DoubleSide,roughness:.6,metalness:.1}),p=>ramp(Math.pow(p.q/D.qmax,.9)));
+ lathe(o1,new THREE.MeshStandardMaterial({color:0xb86f45,side:THREE.DoubleSide,roughness:.4,metalness:.85}));
+ // 100 cooling channels as ribbons on the rib surface, coloured cold (nozzle exit) to hot (injector)
+ const N=100,step=2*Math.PI/N,hw=step*.28,pos=[],col=[],idx=[];let base=0;
+ for(let i=0;i<N;i++){const a=i*step;if(a+hw>phi+1e-6)continue;
+  for(let j=0;j<n;j++){const r=P[j].r*1e3+o1+.15,x=P[j].x*1e3,s=Math.max(0,Math.min(1,(x-x1)/(x0-x1))),c=lerpc([.24,.48,.88],[.91,.6,.24],s);
+   for(const d of[-hw,hw]){pos.push(r*Math.sin(a+d),x,r*Math.cos(a+d));col.push(c[0],c[1],c[2])}}
+  for(let k=0;k<n-1;k++){const A=base+2*k;idx.push(A,A+1,A+2,A+1,A+3,A+2)}base+=2*n}
+ const cg=new THREE.BufferGeometry();cg.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));cg.setAttribute('color',new THREE.Float32BufferAttribute(col,3));cg.setIndex(idx);cg.computeVertexNormals();
+ add(new THREE.Mesh(cg,new THREE.MeshStandardMaterial({vertexColors:true,side:THREE.DoubleSide,roughness:.55,metalness:.1})));
+ if($('jac').checked)lathe(o1+tJ,new THREE.MeshStandardMaterial({color:0x8c939e,side:THREE.DoubleSide,roughness:.35,metalness:.9}));
+ const Rc=D.Rc*1e3+o1+tJ,fl=new THREE.Mesh(new THREE.CylinderGeometry(Rc*1.25,Rc*1.25,Math.max(6,.1*Rc),96,1,false,0,phi),new THREE.MeshStandardMaterial({color:0x8c939e,roughness:.35,metalness:.9,side:THREE.DoubleSide}));
+ fl.position.y=x0-Math.max(3,.05*Rc);add(fl);
+ camD=Math.max(x1-x0,2*D.Re*1e3)*2.1}
+function setView(m3){$('draw').classList.toggle('m2',!m3);$('v3').classList.toggle('alt',!m3);$('v2').classList.toggle('alt',m3);if(!m3)drawEngine()}
+$('v3').onclick=()=>setView(true);$('v2').onclick=()=>setView(false);
+$('cut').addEventListener('change',draw3D);$('jac').addEventListener('change',draw3D);
 $('f').addEventListener('input',render);$('f').addEventListener('submit',e=>e.preventDefault());
 new ResizeObserver(drawEngine).observe($('sv'));new ResizeObserver(drawQ).observe($('sq'));
 render();
