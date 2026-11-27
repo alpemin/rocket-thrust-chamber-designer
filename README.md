@@ -12,8 +12,11 @@ channels, checks that the walls survive the heat and pressure, and builds a 3-D 
 |---|
 | ![Throat slice](outputs/methane_100kN/throat_slice.png) |
 
-🔗 **Interactive web version:** [alpemin.github.io/rocket-thrust-chamber-designer/web](https://alpemin.github.io/rocket-thrust-chamber-designer/web/)
-(change parameters and watch the nozzle redraw live).
+🔗 **[Open the interactive 3D calculator](https://alpemin.github.io/rocket-thrust-chamber-designer/web/)**
+Enter thrust, chamber pressure and propellant, and get a rotatable 3D thrust chamber with all 100 cooling
+channels, a heat-flux colour map and a SolidWorks curve export, live in your browser.
+
+🧊 **3D model of the example engine:** [`thrust_chamber.stl`](outputs/methane_100kN/thrust_chamber.stl) opens in GitHub's built-in 3D viewer, so you can rotate it right here.
 
 ---
 
@@ -114,7 +117,7 @@ tcd/
   report.py       plots, CSV, SolidWorks curves, Markdown report, renders
 designs/          input files (JSON)
 outputs/          generated results for the example engine
-web/              interactive browser version (GitHub Pages)
+web/              interactive 3D calculator (GitHub Pages)
 docs/             SolidWorks guide, GitHub guide
 ```
 
@@ -146,10 +149,10 @@ This is a **preliminary design tool**. Real hardware needs much more analysis.
 - Written in Python
 - Fuel properties come from CoolProp, a free library with real data for methane, hydrogen and RP-1
 - The 3-D model is made with CadQuery and saved as STEP (for SolidWorks) and STL (for 3-D printing)
-- The website is plain HTML and JavaScript
+- The website is plain HTML and JavaScript, with three.js for the 3D view
 - The engineering follows standard rocket textbooks (Sutton, and Huzel & Huang) and well-known heat-transfer formulas (Bartz and Dittus–Boelter)
 
 ## Author
-ALP EMIN TANRISEVEN · [LinkedIn](https://www.linkedin.com/in/alptanriseven/) · alpeminseven@gmail.com
+ALP EMIN TANRISEVEN · [LinkedIn](https://www.linkedin.com/in/alptanriseven/) 
 
 MIT License
