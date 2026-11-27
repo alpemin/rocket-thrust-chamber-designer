@@ -11895,6 +11895,6 @@ This is a **preliminary design tool**. Real hardware needs much more analysis.
 - The engineering follows standard rocket textbooks (Sutton, and Huzel & Huang) and well-known heat-transfer formulas (Bartz and Dittus–Boelter)
 
 ## Author
-ALP EMIN TANRISEVEN · [LinkedIn](https://www.linkedin.com/in/alptanriseven/) · alpeminseven@gmail.com
+ALP EMIN TANRISEVEN · [LinkedIn](https://www.linkedin.com/in/alptanriseven/)
 
 MIT License
